@@ -952,6 +952,30 @@ def layer_norm(g, input, normalized_shape, weight, bias, eps, cudnn_enable):
 @parse_args('v', 'v', 'v', 'v', 'v', 'i', 'f', 'f', 'i')
 def instance_norm(g, input, weight, bias, running_mean, running_var, use_input_stats, momentum, eps,
                   cudnn_enabled):
+                  
+    axes = [-i for i in range(2, 0, -1)]
+
+    two_cst = g.op("Constant", value_t=torch.tensor(2.))
+    eps_cst = g.op("Constant", value_t=torch.tensor(eps))
+
+    mean = g.op("ReduceMean", input, axes_i=axes)
+    numerator = sub(g, input, mean)
+    # variance = e((x - e(x))^2), and (x - e(x)) is the numerator in the layer_norm formula
+    variance = g.op("ReduceMean", pow(g, numerator, two_cst), axes_i=axes)
+    denominator = sqrt(g, add(g, variance, eps_cst))
+
+    inst_norm = div(g, numerator, denominator)
+    weight = g.op("Unsqueeze", weight, axes_i=[-1])
+    weight = g.op("Unsqueeze", weight, axes_i=[-1])
+    bias = g.op("Unsqueeze", bias, axes_i=[-1])
+    bias = g.op("Unsqueeze", bias, axes_i=[-1])
+    if not (weight is None or weight.node().mustBeNone()):
+        inst_norm = mul(g, inst_norm, weight)
+    if not (bias is None or bias.node().mustBeNone()):
+        inst_norm = add(g, inst_norm, bias)
+
+    return inst_norm
+    
     input_sizes = input.type().sizes()
     if weight is None or weight.node().mustBeNone():
         assert len(input_sizes) > 1
