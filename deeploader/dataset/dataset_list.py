@@ -8,6 +8,7 @@ import time
 import random
 import math
 import cv2
+from tqdm import tqdm
 from deeploader.dataset.dataset_cls import ClassifyDataset
 
 def read_img(p):
@@ -27,13 +28,19 @@ class FileListReader(ClassifyDataset):
             for line in f.readlines():
                 self.add(line)
         # sort label
+        keys = set()
+        bar = tqdm(total=len(self.list))
         for index in range(len(self.list)):
             item = self.list[index]
             label = item[1]
+            bar.update(1)
             # add to dict[label]
-            if not label in self.dict.keys():
+            #if not label in self.dict.keys():
+            if not label in keys:
                 self.dict[label] = []
+                keys.add(label)
             self.dict[label].append(index)
+        bar.close()
         # update celeb
         #print(self.dict)
         keys = list(self.dict.keys())
