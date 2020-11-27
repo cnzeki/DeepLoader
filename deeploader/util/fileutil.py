@@ -56,6 +56,24 @@ def file_walker(dir, visitor):
         elif os.path.isfile(fullpath):
             visitor.process(fullpath)
 
+            
+def walk_dir(dir, ext='*'):
+    '''
+        Recursive walk through a dir
+    '''
+    filenames = os.listdir(dir)
+    files = []
+    for filename in filenames:
+        fullpath = os.path.join(dir, filename)
+        fullpath = fullpath.replace('\\', '/')
+        if os.path.isdir(fullpath):
+            files = files + walk_dir(fullpath, ext)
+        elif os.path.isfile(fullpath):
+            fext = os.path.splitext(filename)[-1]
+            if ext.endswith('*') >= 0 or fext.find(ext) >=0:
+                files.append(fullpath)
+    return files
+    
 
 def read_lines(path):
     list = []
